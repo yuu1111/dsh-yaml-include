@@ -1,0 +1,52 @@
+{
+  "name": "dsh-yaml-include",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Native !include bootstrap adapter for DeepSeek Harness YAML configuration",
+  "main": "src/native.js",
+  "exports": {
+    ".": "./src/native.js",
+    "./reader": "./src/reader.js",
+    "./install": "./src/install.js",
+    "./cordis.patch.yml": "./cordis.patch.yml"
+  },
+  "files": [
+    "src",
+    "cordis.patch.yml",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=22.19"
+  },
+  "scripts": {
+    "test": "node --test tests/*.test.js",
+    "check": "node --check src/native.js && node --check src/reader.js && node --check src/install.js && node --test tests/*.test.js",
+    "install:native": "node src/install.js",
+    "smoke": "node scripts/smoke.js"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": "./cordis.patch.yml"
+    }
+  },
+  "dependencies": {
+    "js-yaml": "^4.3.2"
+  },
+  "devDependencies": {
+    "yaml": "^2.9.1"
+  },
+  "bin": {
+    "dsh-yaml-include": "./src/install.js"
+  },
+  "license": "MIT",
+  "author": "yuu1111",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/yuu1111/dsh-yaml-include.git"
+  },
+  "homepage": "https://github.com/yuu1111/dsh-yaml-include#readme",
+  "bugs": {
+    "url": "https://github.com/yuu1111/dsh-yaml-include/issues"
+  }
+}
