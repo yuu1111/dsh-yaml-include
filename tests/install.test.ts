@@ -15,8 +15,15 @@ import test, { type TestContext } from "node:test";
 import { install, MARKER, patchBundle, VERSION } from "../src/install.js";
 import { array, record } from "./assertions.js";
 
+/**
+ * The include bundle fragment preserves the parser and write-guard anchors required by the installer.
+ */
 const include =
 	"data = yaml.load(content, { schema: entryListSchema });\nasync _writeFile(config) {}";
+
+/**
+ * Every supported boot parser boundary must be represented so incomplete patch plans are rejected.
+ */
 const boot =
 	include +
 	"\n" +
@@ -26,14 +33,31 @@ const boot =
 		"parsed = yaml.load(content, { schema: userPatchesSchema });",
 		"parsed = yaml.load(content, { schema: entryListSchema });",
 	].join("\n");
+
+/**
+ * Editor patch anchors cover native tag preservation and include-owned edit protection.
+ */
 const editor =
 	'tag: "tag:yaml.org,2002:js",\n					resolve: (value) => value\n				}]\n' +
 	'if (!isSeq(document.contents)) throw new Error("Profile patch must be a YAML sequence");\n' +
 	"yaml.load(String(document), { schema: entryListSchema })";
 
+/**
+ * Installer writes and backups must stay inside a disposable installation, never the real host.
+ *
+ * @param t - Test lifecycle responsible for verified temporary-root cleanup.
+ * @returns Installation paths, exact originals, and isolated mutation helpers.
+ */
 function fixture(
 	t: TestContext,
-	{ hoisted = false }: { hoisted?: boolean } = {},
+	{
+		hoisted = false,
+	}: {
+		/**
+		 * Sibling dependencies must resolve correctly without assuming a nested installation.
+		 */
+		hoisted?: boolean;
+	} = {},
 ) {
 	const temp = resolve(mkdtempSync(join(tmpdir(), "dsh-include-install-")));
 	assert.ok(temp.startsWith(resolve(tmpdir())));

@@ -6,7 +6,11 @@
 		"enabled": true
 	},
 	"typecheck": {
-		"enabled": true
+		"enabled": true,
+		"projects": [
+			"tsconfig.json",
+			"tsconfig.build.json"
+		]
 	},
 	"knip": {
 		"enabled": true
@@ -14,57 +18,51 @@
 	"code-style-check": {
 		"enabled": true,
 		"includes": [
-			"src/**",
-			"scripts/**",
-			"tests/**",
-			"knip.ts"
-		]
+			"**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+			"!node_modules/**",
+			"!dist/**",
+			"!.git/**"
+		],
+		"rules": {
+			"preset": "all"
+		}
 	},
 	"comment-check": {
 		"enabled": true,
 		"includes": [
-			"src/**",
-			"scripts/**",
-			"tests/**",
-			"knip.ts"
+			"**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+			"!node_modules/**",
+			"!dist/**",
+			"!.git/**"
 		],
 		"rules": {
-			"shape": {
-				"cramped-comment": "on"
-			},
-			"content": {
-				"japanese-period": "on"
-			}
+			"preset": "all"
 		}
 	},
 	"document-style-check": {
 		"enabled": true,
 		"includes": [
-			"README.md",
-			"README.ja.md"
+			"**/*.md",
+			"!node_modules/**",
+			"!dist/**",
+			"!.git/**"
 		],
 		"rules": {
-			"typography": {
-				"full-width-alphanumeric": "on",
-				"japanese-comma": "on",
-				"japanese-period": "on"
-			},
-			"structure": {
-				"list-marker-consistency": "on"
-			}
+			"preset": "all"
 		}
 	},
 	"tsdoc-check": {
 		"enabled": true,
 		"includes": [
-			"src/**",
-			"scripts/**",
-			"tests/**",
-			"knip.ts"
+			"**/*.{ts,tsx,js,jsx,mts,cts,mjs,cjs}",
+			"!node_modules/**",
+			"!dist/**",
+			"!.git/**"
 		],
 		"rules": {
 			"preset": "all"
 		},
-		"styleScope": "documented"
+		"styleScope": "documented",
+		"docScope": "all"
 	}
 }

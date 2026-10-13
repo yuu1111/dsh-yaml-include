@@ -13,6 +13,14 @@ import { inspect } from "node:util";
 import { YamlIncludeReader } from "../src/reader.js";
 import { errorCode, record } from "./assertions.js";
 
+/**
+ * Real files are required to exercise relative includes, symlink confinement, and rereads.
+ *
+ * @param t - Test lifecycle responsible for removing the isolated root.
+ * @param files - Exact YAML contents within the fixture root.
+ * @param options - Reader limits or policies under test.
+ * @returns The isolated root and its confined reader.
+ */
 function fixture(
 	t: TestContext,
 	files: Record<string, string>,
@@ -27,6 +35,14 @@ function fixture(
 	return { root, reader: new YamlIncludeReader(root, options) };
 }
 
+/**
+ * Failure assertions rely on stable codes rather than secret-bearing YAML diagnostics.
+ *
+ * @param reader - Confined reader under test.
+ * @param file - Fixture-relative document to reject.
+ * @param code - Required stable failure code.
+ * @throws An assertion error when reading succeeds or reports a different code.
+ */
 const rejects = (reader: YamlIncludeReader, file: string, code: string) =>
 	assert.throws(
 		() => reader.read(file),

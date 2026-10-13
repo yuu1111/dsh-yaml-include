@@ -1,7 +1,6 @@
 {
 	"name": "dsh-yaml-include",
 	"version": "0.1.0",
-	"private": true,
 	"type": "module",
 	"description": "Native !include bootstrap adapter for DeepSeek Harness YAML configuration",
 	"main": "dist/src/native.js",
@@ -27,7 +26,8 @@
 		"dist/src",
 		"cordis.patch.yml",
 		"README.md",
-		"README.ja.md"
+		"README.ja.md",
+		"docs/releasing.md"
 	],
 	"engines": {
 		"node": ">=22.19"
@@ -64,7 +64,7 @@
 		"yaml": "^2.9.1"
 	},
 	"bin": {
-		"dsh-yaml-include": "./dist/src/install.js"
+		"dsh-yaml-include": "dist/src/install.js"
 	},
 	"license": "MIT",
 	"author": "yuu1111",
@@ -77,5 +77,9 @@
 		"url": "https://github.com/yuu1111/dsh-yaml-include/issues"
 	},
 	"types": "dist/src/native.d.ts",
-	"packageManager": "pnpm@12.3.4"
+	"packageManager": "pnpm@12.3.4",
+	"publishConfig": {
+		"access": "public",
+		"registry": "https://registry.npmjs.org"
+	}
 }

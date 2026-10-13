@@ -14,32 +14,98 @@ import { pathToFileURL } from "node:url";
 import type { parseDocument as parseYamlDocument } from "yaml";
 import { array, record } from "./assertions.js";
 
+/**
+ * Host configuration stays untrusted until assertions narrow each YAML value.
+ */
 type Config = Record<string, unknown>;
 
+/**
+ * Editor changes must distinguish a profile override from inherited bundle configuration.
+ */
 type Change = (raw: Config, inherited: Config) => Config;
 
+/**
+ * The installed loader must expose live entries, not editor-only stand-ins.
+ */
 interface Entry {
+	/**
+	 * Entry identity and effective configuration must agree with the running loader.
+	 */
 	options: { id: string; config: Config };
+
+	/**
+	 * Ownership must remain rooted in the native include tree.
+	 */
 	parent: { tree: { ctx: { fiber: { entry: { id: string } } } } };
+
+	/**
+	 * A loaded entry must reach the host’s active fiber state.
+	 */
 	fiber: { state: number };
+
+	/**
+	 * Reconciliation must remain callable so rollback can be tested after a real save.
+	 *
+	 * @param args - Host reconciliation arguments forwarded unchanged.
+	 * @returns The host update result.
+	 */
 	update(...args: unknown[]): Promise<unknown>;
 }
 
+/**
+ * Editor rows must separate writable overrides from inherited configuration.
+ */
 interface Row {
+	/**
+	 * The row must refer to the live entry rather than a detached configuration copy.
+	 */
 	entry: Entry;
+
+	/**
+	 * Only profile-owned changes belong in the writable override.
+	 */
 	override: Config;
+
+	/**
+	 * Bundle-owned providers remain available when the profile override is reset.
+	 */
 	inherited: Config;
 }
 
+/**
+ * The integration boundary uses installed Cordis services instead of mocked editor state.
+ */
 interface HostContext {
+	/**
+	 * Module resolution must be anchored to the isolated host root.
+	 */
 	baseUrl: string;
+
+	/**
+	 * Host resources must be disposed before their temporary files are removed.
+	 */
 	fiber: { dispose(): Promise<void> };
+
+	/**
+	 * Plugin readiness must be observable before the loader service is used.
+	 *
+	 * @param plugin - Installed host plugin.
+	 * @returns The host plugin readiness handle.
+	 */
 	plugin(plugin: unknown): PromiseLike<unknown>;
+
+	/**
+	 * The real loader must activate consumers and expose entries for reconciliation.
+	 */
 	loader: {
 		builtins: Record<string, (ctx: unknown, config: Config) => void>;
 		await(): Promise<void>;
 		entries(): Iterable<Entry>;
 	};
+
+	/**
+	 * Profile paths and overlays must belong to this fixture, not the user’s installation.
+	 */
 	profileContext: {
 		dir: string;
 		home: string;
@@ -49,22 +115,72 @@ interface HostContext {
 	};
 }
 
+/**
+ * Installed editor behavior must preserve external ownership across edits and resets.
+ */
 interface Editor {
+	/**
+	 * Editable entries must retain their live loader identity.
+	 *
+	 * @returns Entries visible to the installed editor.
+	 */
 	entries(): Entry[];
+
+	/**
+	 * Configuration must expose inheritance independently of persisted overrides.
+	 *
+	 * @returns Current editor rows.
+	 */
 	configuration(): Row[];
+
+	/**
+	 * Edits must reconcile live configuration or reject without corrupting source files.
+	 *
+	 * @param entry - Live entry targeted by the edit.
+	 * @param change - Requested override or reset.
+	 * @returns Completion of persistence and reconciliation.
+	 */
 	edit(entry: Entry, change: Change): Promise<void>;
 }
 
+/**
+ * Installed boot services must discover and mount native bundle includes without substitutes.
+ */
 interface Boot {
+	/**
+	 * Profile discovery must recognize the fixture’s declared bundle.
+	 *
+	 * @param name - Isolated profile identity.
+	 * @param profile - Fixture profile directory.
+	 * @param anchor - Fixture installation manifest.
+	 * @returns Bundle discovery outcomes and configuration layers.
+	 */
 	loadProfileDirectory(
 		name: string,
 		profile: string,
 		anchor: string,
 	): { skippedBundles: unknown[]; layers: unknown[] };
+
+	/**
+	 * Patch loading must use the same profile boundary as the installed editor.
+	 *
+	 * @param name - Isolated profile identity.
+	 * @param profile - Fixture-owned profile paths and overlays.
+	 * @returns Host patch data for mounting.
+	 */
 	readProfilePatches(
 		name: string,
 		profile: HostContext["profileContext"],
 	): unknown;
+
+	/**
+	 * Native includes must enter the actual loader tree before editor assertions run.
+	 *
+	 * @param ctx - Installed host context.
+	 * @param base - Fixture root configuration path.
+	 * @param patches - Host-resolved profile patches.
+	 * @returns Completion of root include mounting.
+	 */
 	mountRootInclude(
 		ctx: HostContext,
 		base: string,
@@ -72,6 +188,9 @@ interface Boot {
 	): Promise<void>;
 }
 
+/**
+ * All integration dependencies must resolve from one installed, native-patched host.
+ */
 type HostModules = [
 	{
 		Context: new () => HostContext;
@@ -83,10 +202,24 @@ type HostModules = [
 	{ parseDocument: typeof parseYamlDocument },
 ];
 
+/**
+ * Provider assertions require mapping shapes at both ownership boundaries.
+ *
+ * @param config - Effective, inherited, or overridden configuration.
+ * @returns The local provider mapping.
+ * @throws An assertion error when either mapping is absent.
+ */
 function localProviders(config: Config): Config {
 	return record(record(config.providers).local);
 }
 
+/**
+ * An incompatible installed host must fail explicitly rather than fall back to mocks.
+ *
+ * @param value - Dynamically imported host modules.
+ * @returns No runtime value; successful validation narrows the host-module boundary.
+ * @throws An assertion error when required host exports are unavailable.
+ */
 function assertHostModules(value: unknown): asserts value is HostModules {
 	const loaded = array(value);
 	assert.equal(loaded.length, 5);
@@ -109,8 +242,19 @@ function assertHostModules(value: unknown): asserts value is HostModules {
 	}
 }
 
+/**
+ * Integration coverage requires an explicit installed host; local dependencies are not a substitute.
+ */
 const hostEntry = process.env.DSH_TEST_HOST_ENTRY;
+
+/**
+ * Host-relative resolution prevents mixing installed Cordis services with repository dependencies.
+ */
 const host = hostEntry ? createRequire(hostEntry) : null;
+
+/**
+ * Imports remain untrusted until the required installed-host exports are verified.
+ */
 const loadedModules: unknown = host
 	? await Promise.all([
 			import(pathToFileURL(host.resolve("@deepseek-ai/cordis")).href),
@@ -125,13 +269,28 @@ const loadedModules: unknown = host
 		])
 	: null;
 if (loadedModules !== null) assertHostModules(loadedModules);
+
+/**
+ * Fixtures share the validated host boundary while keeping their runtime contexts isolated.
+ */
 const modules: HostModules | null = loadedModules;
+
+/**
+ * Missing host opt-in must be reported as skipped integration coverage, not simulated success.
+ */
 const options = {
 	skip:
 		!hostEntry &&
 		"Set DSH_TEST_HOST_ENTRY to an installed native-patched DSH package.json",
 };
 
+/**
+ * Real boot and editor services are required to expose ownership and post-save rollback failures.
+ *
+ * @param t - Test lifecycle responsible for host disposal and temporary-file cleanup.
+ * @param profileText - Exact initial profile text used to test persistence and rollback.
+ * @returns An isolated live editor with source-byte preservation assertions.
+ */
 async function fixture(t: TestContext, profileText = "[]\n") {
 	assert.ok(modules);
 	const [

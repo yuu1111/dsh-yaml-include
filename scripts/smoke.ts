@@ -14,17 +14,45 @@ import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
+/**
+ * Anchors packing to the repository rather than the disposable consumer project.
+ */
 const project = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
+
+/**
+ * Retains the package manager entry selected by pnpm run instead of invoking a shell wrapper.
+ */
 const pnpmCli = process.env.npm_execpath;
 if (
 	!pnpmCli ||
 	!/^pnpm\/12\.3\.4(?:\s|$)/.test(process.env.npm_config_user_agent ?? "")
 )
 	throw new Error("Run with pnpm@12.3.4 run smoke");
+
+/**
+ * Confines package installation, store hardlinks, and backups to a disposable directory.
+ */
 const temp = mkdtempSync(join(tmpdir(), "dsh-yaml-package-"));
+
+/**
+ * Compares original bytes rather than trusting installation status messages.
+ *
+ * @param file - Installed runtime file whose original or restored bytes are checked.
+ * @returns A SHA-256 digest used to detect byte-level changes.
+ * @throws A filesystem error if the verification target cannot be read.
+ */
 const hash = (file: string) =>
 	createHash("sha256").update(readFileSync(file)).digest("hex");
 
+/**
+ * Rejects subprocess failures instead of allowing later assertions to hide an incomplete command.
+ *
+ * @param args - Argument vector passed without shell interpretation.
+ * @param cwd - Repository or disposable project that owns the command.
+ * @param env - Child environment, optionally selecting an isolated DSH host.
+ * @param executable - Native CLI or Node executable, avoiding Windows command wrappers.
+ * @throws A spawn error or failed-exit report if the command does not complete successfully.
+ */
 function run(
 	args: string[],
 	cwd = project,
@@ -41,6 +69,14 @@ function run(
 		throw new Error(`Command failed (${child.status}): ${args.join(" ")}`);
 }
 
+/**
+ * Supports native and JavaScript pnpm entries without enabling shell interpretation.
+ *
+ * @param args - pnpm command arguments, including disposable store selection when needed.
+ * @param cwd - Project directory used for packing or isolated installation.
+ * @param env - Child environment inherited from the verified pnpm invocation.
+ * @throws A spawn error or failed-exit report when pnpm does not succeed.
+ */
 const pnpm = (
 	args: string[],
 	cwd = project,

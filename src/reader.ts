@@ -9,6 +9,9 @@ import {
 } from "node:path";
 import yaml from "js-yaml";
 
+/**
+ * Stable failure categories that avoid requiring callers to inspect redacted details.
+ */
 type IncludeErrorCode =
 	| "FILE_UNAVAILABLE"
 	| "INVALID_PATH"
@@ -17,18 +20,58 @@ type IncludeErrorCode =
 	| "LIMIT"
 	| "INVALID_YAML";
 
+/**
+ * Optional positive integer budgets; omitted values use the reader defaults.
+ */
 interface ReaderOptions {
+	/**
+	 * Maximum active include depth and expanded graph depth; defaults to 32.
+	 */
 	maxDepth?: number;
+
+	/**
+	 * Separate UTF-8 budgets for source text and expanded keys/strings; defaults to 1 MiB.
+	 */
 	maxBytes?: number;
+
+	/**
+	 * Load-attempt budget including the root and repeated includes; defaults to 128.
+	 */
 	maxFiles?: number;
+
+	/**
+	 * Expanded value-visit budget, counting repeated aliases again; defaults to 100000.
+	 */
 	maxNodes?: number;
 }
 
+/**
+ * Per-read state shared across includes so sibling loads cannot reset budgets.
+ */
 interface LoadState {
+	/**
+	 * Active canonical paths, not all visited files, so non-circular reuse remains valid.
+	 */
 	stack: string[];
+
+	/**
+	 * Aggregate UTF-8 source bytes, including supplied root text and repeated loads.
+	 */
 	bytes: number;
+
+	/**
+	 * Cumulative load attempts, incremented after cycle and depth checks without rollback.
+	 */
 	files: number;
+
+	/**
+	 * Root-only text override; undefined reads from disk, while an empty string is supplied text.
+	 */
 	sourceText?: string;
+
+	/**
+	 * Base schema shared by every include; undefined selects JSON_SCHEMA.
+	 */
 	schema?: yaml.Schema;
 }
 
@@ -55,11 +98,26 @@ export class YamlIncludeError extends Error {
 	}
 }
 
+/**
+ * Tests lexical containment without relying on an unsafe shared string prefix.
+ *
+ * @param root - Absolute confinement boundary.
+ * @param path - Absolute candidate; symlink resolution is the caller's responsibility.
+ * @returns Whether the candidate is the root or lies beneath it.
+ */
 function inside(root: string, path: string) {
 	const part = relative(root, path);
 	return !isAbsolute(part) && part !== ".." && !part.startsWith(`..${sep}`);
 }
 
+/**
+ * Builds a safe failure without retaining the original thrown value in its cause.
+ *
+ * @param code - Public failure category.
+ * @param message - Diagnostic containing neither source text nor paths.
+ * @param error - Untrusted thrown value, used only to distinguish Error instances.
+ * @returns Failure with a fresh redacted cause, never the original object.
+ */
 function sanitizedFailure(
 	code: IncludeErrorCode,
 	message: string,
@@ -235,6 +293,15 @@ export class YamlIncludeReader {
 		}
 	}
 
+	/**
+	 * Enforces confinement before and after canonicalization; lexical checks alone miss symlinks.
+	 *
+	 * @param filename - Untrusted include scalar requiring a relative local YAML path.
+	 * @param base - Absolute directory of the including file, or the root for the first load.
+	 * @param state - Traversal state determining whether a supplied root may be absent on disk.
+	 * @returns Confined canonical YAML path, or the allowed supplied-root candidate.
+	 * @throws {@link YamlIncludeError} for invalid paths, root escapes, or unavailable files.
+	 */
 	private resolvePath(
 		filename: unknown,
 		base: string,
@@ -271,6 +338,14 @@ export class YamlIncludeReader {
 		return path;
 	}
 
+	/**
+	 * Resolves symlinks without requiring a disk file for a supplied-text root.
+	 *
+	 * @param candidate - Absolute path already checked for lexical confinement.
+	 * @param state - Only an empty stack with defined sourceText permits the fallback.
+	 * @returns Canonical path, or the unchanged candidate for an unresolved supplied root.
+	 * @throws {@link YamlIncludeError} when filesystem resolution fails for a disk-backed load.
+	 */
 	private canonicalPath(candidate: string, state: LoadState): string {
 		try {
 			return realpathSync(candidate);
@@ -285,6 +360,13 @@ export class YamlIncludeReader {
 		}
 	}
 
+	/**
+	 * Charges each accepted load attempt rather than deduplicating repeated includes.
+	 *
+	 * @param path - Resolved path compared against active ancestors for cycles.
+	 * @param state - Shared traversal state whose cumulative file counter is incremented.
+	 * @throws {@link YamlIncludeError} for an active cycle or exhausted depth/file budget.
+	 */
 	private checkFileLimits(path: string, state: LoadState): void {
 		if (state.stack.includes(path))
 			throw new YamlIncludeError("CYCLE", "Circular YAML include");
@@ -294,6 +376,14 @@ export class YamlIncludeReader {
 			throw new YamlIncludeError("LIMIT", "YAML include file limit exceeded");
 	}
 
+	/**
+	 * Bounds disk reads before allocation; supplied root text is charged by the caller.
+	 *
+	 * @param path - Confined path to a regular file unless supplied root text applies.
+	 * @param state - Remaining byte budget and root-only override; empty text is not absent.
+	 * @returns Supplied root text or UTF-8 file contents without changing counters.
+	 * @throws {@link YamlIncludeError} for unavailable/non-file sources or exhausted byte budget.
+	 */
 	private readSource(path: string, state: LoadState): string {
 		try {
 			if (state.stack.length === 0 && state.sourceText !== undefined)

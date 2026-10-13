@@ -1,36 +1,37 @@
-[English](README.md)
-
 # dsh-yaml-include
+
+[English](README.md)
 
 DeepSeek Harness の YAML 設定で、ローカルファイルを `!include` タグで読み込めるようにします. JavaScript の設定式や、複数の設定を結合した生成ファイルは不要です.
 
-**対応バージョンは @deepseek-ai/dsh 0.2.0-rc.2 のみです.** 通常の実行時プラグインではなく、起動時の設定読み込みを拡張するアダプターです. インストール済み DSH の起動用パーサー、Cordis Include、ConfigEditor を直接拡張します. グローバルな YAML スキーマは変更しません. 別の DSH バージョンや想定外のパーサー構造を検出した場合は、対象ファイルに書き込む前に処理を中止します.
+**対応バージョンは @deepseek-ai/dsh 0.2.0-rc.2 のみです.** プロファイルを読み込む前の起動処理を修正するアダプターで、通常のバンドルプラグインとして有効にする必要はありません. インストール済み DSH の起動用パーサー、Cordis Include、ConfigEditor を直接拡張します. グローバルな YAML スキーマは変更しません. 別の DSH バージョンや想定外のパーサー構造を検出した場合は、対象ファイルに書き込む前に処理を中止します.
 
 ## インストール
 
-npm パッケージはまだ公開していません. ソースは [yuu1111/dsh-yaml-include](https://github.com/yuu1111/dsh-yaml-include) で公開しています.
+`dsh-yaml-include@0.1.0` は初回の npm 公開前です. 公開後は、次の手順で公開パッケージをインストールし、配布 CLI を実行できます.
+
+```sh
+pnpm add --global dsh-yaml-include
+dsh-yaml-include --dsh-dir /exact/dsh/package --dry-run
+dsh-yaml-include --dsh-dir /exact/dsh/package
+```
+
+`/exact/dsh/package` は、実際にインストールした `@deepseek-ai/dsh` のパッケージディレクトリに置き換えてください. DSH の実行ファイルや、このアダプターのディレクトリは指定しません. まず `--dry-run` で変更予定を確認し、その後に適用します.
+
+npm と pnpm ではインストール先が異なることがあるため、必ず `--dsh-dir` を明示してください. グローバルインストール先を探すには `npm root -g` や `pnpm root -g` を使えますが、実行している DSH に対応するパッケージか確認が必要です. pnpm のグローバル実行ファイルディレクトリが PATH にない場合は、先に `pnpm setup` を実行してシェルを開き直してください. Node のモジュール解決に対応しており、npm/pnpm の入れ子になった依存関係や、ローカルで巻き上げ（hoist）された依存関係も扱えます.
+
+### 公開前にソースからインストールする
+
+ソースは [yuu1111/dsh-yaml-include](https://github.com/yuu1111/dsh-yaml-include) で公開しています. pnpm 12.3.4 と Node.js を用意して、次のコマンドを実行してください.
 
 ```sh
 git clone https://github.com/yuu1111/dsh-yaml-include.git
 cd dsh-yaml-include
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm run check
+node dist/src/install.js --dsh-dir /exact/dsh/package --dry-run
+node dist/src/install.js --dsh-dir /exact/dsh/package
 ```
-
-変更する DSH のインストール先を明示してください. pnpm のグローバル実行ファイルディレクトリが PATH にない場合は、先に `pnpm setup` を実行してシェルを開き直してください. pnpm でグローバルにインストールした DSH には、次のコマンドを使います. まず `--dry-run` で変更予定を確認し、その後に適用します.
-
-```powershell
-$dshDir = Join-Path (pnpm root -g) '@deepseek-ai/dsh'
-node dist/src/install.js --dsh-dir $dshDir --dry-run
-node dist/src/install.js --dsh-dir $dshDir
-```
-
-```sh
-node dist/src/install.js --dsh-dir "$(pnpm root -g)/@deepseek-ai/dsh" --dry-run
-node dist/src/install.js --dsh-dir "$(pnpm root -g)/@deepseek-ai/dsh"
-```
-
-同じ CLI を `dsh-yaml-include` コマンドとしても配布します. `--dsh-dir` を明示することで、別の DSH インストールを誤って変更するのを防げます. Node のモジュール解決に対応しており、npm/pnpm の入れ子になった依存関係や、ローカルで巻き上げ（hoist）された依存関係も扱えます.
 
 インストーラーはサーバーを起動・再起動しません. **アダプターの適用後と、読み込み先のファイルを編集した後は、DSH を再起動してください.**
 
@@ -86,10 +87,14 @@ local: !include local.yml
 インストーラーは、すべての対象への変更を先に計画し、同時実行を防ぎます. 処理中に捕捉できるエラーが発生した場合は、完了済みの書き込みを元に戻します. 繰り返し実行しても同じ状態になり、元のバックアップを保持したまま補助ファイルを更新できます. 想定外のローカル変更を検出した場合は、上書きせずに処理を中止します.
 
 ```sh
-node dist/src/install.js --dsh-dir /exact/dsh/package --uninstall
+dsh-yaml-include --dsh-dir /exact/dsh/package --uninstall
 ```
 
-アンインストールや DSH の更新前に、設定から `!include` タグを取り除いてください. DSH の更新でアダプターが置き換えられることがあります. 対応するアダプターを再適用するまでは、include に依存する設定を有効にしないでください. DSH のバージョンが変わった場合は、強制インストールではなく、そのバージョンに対応したアダプターのリリースが必要です. 復元が不要になるまではバックアップを残してください.
+ソースからインストールした場合は、復元コマンドの `dsh-yaml-include` を `node dist/src/install.js` に置き換えてください. アンインストールや DSH の更新前に、設定から `!include` タグを取り除いてください. DSH の更新でアダプターが置き換えられることがあります. 対応するアダプターを再適用するまでは、include に依存する設定を有効にしないでください. DSH のバージョンが変わった場合は、強制インストールではなく、そのバージョンに対応したアダプターのリリースが必要です. 復元が不要になるまではバックアップを残してください.
+
+## npm への公開
+
+公開用の自動化を準備していますが、初回の bootstrap 公開と npm Trusted Publisher の設定は未実施です. 公開ワークフローは GitHub Release の公開時に実行され、タグ `v0.1.0` とパッケージのバージョン `0.1.0` の一致を確認します. pnpm でのビルド、strict チェック、smoke テスト後に、pack した tarball を artifact として別ジョブに渡し、OIDC 認証と provenance 付きで npm に公開する構成です. 開発は引き続き pnpm を使い、registry への公開にだけ npm CLI を使います. `pnpm publish` は使いません. Release を公開する前に、[公開手順](docs/releasing.md) で bootstrap と Trusted Publisher の設定を確認してください.
 
 ## 開発と検証
 

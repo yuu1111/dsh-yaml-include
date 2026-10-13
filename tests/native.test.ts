@@ -12,13 +12,30 @@ import {
 } from "../src/native.js";
 import { array, errorCode, record } from "./assertions.js";
 
+/**
+ * Expression compatibility requires inert payloads; test YAML must never execute JavaScript.
+ */
 const js = new yaml.Type("tag:yaml.org,2002:js", {
 	kind: "scalar",
 	construct: (__jsExpr: unknown) => ({ __jsExpr }),
 });
+
+/**
+ * Native include parsing must retain the host’s JSON semantics and inert expression dialect.
+ */
 const schema = yaml.JSON_SCHEMA.extend(js);
+
+/**
+ * Editor documents must preserve include nodes without reading or expanding external sources.
+ */
 const customTags = [{ tag: "!include", resolve: (value: string) => value }];
 
+/**
+ * Independent package roots are required to detect leaked parse state and escaped include sources.
+ *
+ * @param t - Test lifecycle responsible for removing the isolated package.
+ * @returns A package root with nested provider includes.
+ */
 function fixture(t: TestContext) {
 	const root = mkdtempSync(join(tmpdir(), "dsh-native-include-"));
 	t.after(() => rmSync(root, { recursive: true, force: true }));

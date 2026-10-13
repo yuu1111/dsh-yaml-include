@@ -25,50 +25,148 @@ export const VERSION = "0.2.0-rc.2";
  * Identifies adapter-owned bundles; a marker alone is not proof of a managed installation.
  */
 export const MARKER = "// dsh-yaml-include adapter v1";
+
+/**
+ * Locates shipped helpers independently of the caller's working directory.
+ */
 const helperDirectory = dirname(fileURLToPath(import.meta.url));
 
+/**
+ * Keeps destructive restore mode explicit and permits validation without writes.
+ */
 interface InstallOptions {
+	/**
+	 * Required at runtime; an omitted root must not guess which DSH installation to modify.
+	 */
 	dshDir?: string;
+
+	/**
+	 * Restores pre-adapter bytes rather than removing bundles; defaults to false.
+	 */
 	uninstall?: boolean;
+
+	/**
+	 * Validates and reports planned changes without acquiring a lock or writing files.
+	 */
 	dryRun?: boolean;
+
+	/**
+	 * Defaults to shipped helpers; alternate sources are checked again before commit.
+	 */
 	sourceDir?: string;
+
+	/**
+	 * Defaults to user-level storage outside DSH so package replacement need not erase backups.
+	 */
 	backupDir?: string;
 }
 
+/**
+ * Pairs installed-byte ownership evidence with the recoverable pre-adapter state.
+ */
 interface BackupFile {
+	/**
+	 * Exact target path; manifests cannot nominate arbitrary restore destinations.
+	 */
 	path: string;
+
+	/**
+	 * Expected managed bytes, not original bytes; drift prevents overwriting external edits.
+	 */
 	installedHash: string;
+
+	/**
+	 * Original blob digest; null means the target did not exist before installation.
+	 */
 	originalHash: string | null;
 }
 
+/**
+ * Binds restoration evidence to one installation and one supported backup format.
+ */
 interface BackupManifest {
+	/**
+	 * Resolved DSH root; backups from another root are not interchangeable.
+	 */
 	root: string;
+
+	/**
+	 * Supported DSH version; restoration must not silently accept a different release.
+	 */
 	version: string;
+
+	/**
+	 * Backup schema discriminator; only format 1 is accepted by installation planning.
+	 */
 	format: number;
+
+	/**
+	 * Complete expected target set, including helpers, to prevent partial ownership claims.
+	 */
 	files: BackupFile[];
 }
 
+/**
+ * Separates rollback bytes from pre-adapter bytes so reinstallation remains reversible.
+ */
 interface Change {
+	/**
+	 * Validated bundle or helper destination, never an arbitrary manifest-provided path.
+	 */
 	path: string;
+
+	/**
+	 * Planning-time bytes used for concurrency checks and rollback; null means absent.
+	 */
 	current: Buffer | null;
+
+	/**
+	 * Pre-adapter bytes recovered from backup, not necessarily current bytes; null means originally absent.
+	 */
 	original: Buffer | null;
+
+	/**
+	 * Intended post-operation bytes; null requests removal rather than an empty file.
+	 */
 	next: Buffer | null;
 }
 
+/**
+ * Reports byte changes separately from operation status, including validation-only runs.
+ */
 interface InstallResult {
+	/**
+	 * Distinguishes absent ownership, dry runs, and completed operations; unchanged means no target byte changes.
+	 */
 	status:
 		| "not-installed"
 		| "dry-run"
 		| "uninstalled"
 		| "installed"
 		| "unchanged";
+
+	/**
+	 * Target paths whose bytes differ from the plan; dry-run entries are not completed writes.
+	 */
 	changed: string[];
 }
 
+/**
+ * Allows object field inspection without treating null as a record; arrays also qualify.
+ *
+ * @param value - Untrusted parsed value.
+ * @returns Whether the value is a non-null object, without validating its fields.
+ */
 function isRecord(value: unknown): value is Record<string, unknown> {
 	return value !== null && typeof value === "object";
 }
 
+/**
+ * Checks manifest entry shape without claiming its paths or digests are trusted.
+ *
+ * @param value - Untrusted manifest entry.
+ * @returns Whether required fields have their expected primitive types.
+ */
 function isBackupFile(value: unknown): value is BackupFile {
 	return (
 		isRecord(value) &&
@@ -78,6 +176,13 @@ function isBackupFile(value: unknown): value is BackupFile {
 	);
 }
 
+/**
+ * Rejects malformed ownership evidence instead of treating it as an absent installation.
+ *
+ * @param content - Manifest bytes, or null when no manifest exists.
+ * @returns A shape-checked manifest, or null only for absent input.
+ * @throws If JSON parsing fails or required manifest fields have invalid types.
+ */
 function readManifest(content: Buffer | null): BackupManifest | null {
 	if (content === null) return null;
 	const value: unknown = JSON.parse(content.toString());
@@ -98,19 +203,61 @@ function readManifest(content: Buffer | null): BackupManifest | null {
 	};
 }
 
+/**
+ * Limits patching to audited bundles rather than discovering speculative consumers.
+ */
 const packages = ["dsh-app-boot", "cordis-plugin-include", "dsh-config-editor"];
+
+/**
+ * Uses content-addressed identities so unchanged backups can be reused.
+ *
+ * @param value - Bytes or UTF-8 text whose identity is needed.
+ * @returns Lowercase SHA-256 hexadecimal digest.
+ */
 const hash = (value: string | Buffer) =>
 	createHash("sha256").update(value).digest("hex");
+
+/**
+ * Preserves absence as null instead of conflating it with an empty file.
+ *
+ * @param path - File to snapshot.
+ * @returns File bytes, or null when the existence check reports absence.
+ * @throws If reading an existing file fails, including a concurrent removal.
+ */
 const read = (path: string) => (existsSync(path) ? readFileSync(path) : null);
+
+/**
+ * Treats absence as a distinct state for rollback and concurrency checks.
+ *
+ * @param left - First snapshot; null denotes absence.
+ * @param right - Second snapshot; null denotes absence.
+ * @returns Whether both snapshots represent identical bytes or both are absent.
+ */
 const same = (left: Buffer | null, right: Buffer | null) =>
 	left === null ? right === null : right !== null && left.equals(right);
 
+/**
+ * Refuses ambiguous sites rather than patching the wrong bundle revision.
+ *
+ * @param text - Bundle text to patch.
+ * @param before - Exact audited site expected once.
+ * @param after - Replacement text for that site.
+ * @returns Text with the unique site replaced.
+ * @throws If the expected site is missing or appears more than once.
+ */
 function replaceOnce(text: string, before: string, after: string) {
 	if (text.split(before).length !== 2)
 		throw new Error(`Expected exactly one adapter site: ${before}`);
 	return text.replace(before, after);
 }
 
+/**
+ * Keeps package-specific edits restricted to audited include-sensitive sites.
+ *
+ * @param packageName - Unscoped name of a supported DSH package.
+ * @returns Original and replacement text pairs for the package.
+ * @throws If the package has no audited patch sites.
+ */
 function patchSites(packageName: string): [string, string][] {
 	switch (packageName) {
 		case "dsh-app-boot":
@@ -199,6 +346,13 @@ export function patchBundle(content: string, packageName: string) {
 	);
 }
 
+/**
+ * Avoids exposing partially written bytes; this does not replace ownership checks.
+ *
+ * @param path - Destination whose parent may be created.
+ * @param data - Complete replacement bytes or UTF-8 text.
+ * @throws If directory creation, exclusive temporary writing, renaming, or cleanup fails.
+ */
 function atomic(path: string, data: string | Buffer) {
 	mkdirSync(dirname(path), { recursive: true });
 	const temp = `${path}.include-${process.pid}-${Date.now()}.tmp`;
@@ -210,21 +364,72 @@ function atomic(path: string, data: string | Buffer) {
 	}
 }
 
+/**
+ * Requires both runtime helpers so installation cannot silently ship an incomplete adapter.
+ */
 type Helpers = Record<"native.js" | "reader.js", Buffer>;
 
+/**
+ * Captures validated snapshots for later drift checks; it is not a filesystem lock.
+ */
 interface InstallPlan {
+	/**
+	 * Resolved installation root used to bind backups to the intended DSH instance.
+	 */
 	root: string;
+
+	/**
+	 * Root-specific backup and lock directory, separate from installed packages.
+	 */
 	storage: string;
+
+	/**
+	 * Ownership manifest destination; its bytes must remain stable until commit.
+	 */
 	manifestPath: string;
+
+	/**
+	 * Planning-time manifest bytes for concurrency checks; null means absent.
+	 */
 	manifestBytes: Buffer | null;
+
+	/**
+	 * Prior ownership evidence, or null for an unmanaged installation.
+	 */
 	previous: BackupManifest | null;
+
+	/**
+	 * Helper source location retained for checking that planned bytes remain current.
+	 */
 	sourceDir: string;
+
+	/**
+	 * Helper snapshots; null in uninstall mode because restoration does not need new helpers.
+	 */
 	helpers: Helpers | null;
+
+	/**
+	 * All validated targets, including unchanged ones that still need drift checks.
+	 */
 	changes: Change[];
+
+	/**
+	 * Only byte-changing targets, avoiding unnecessary writes and rollback entries.
+	 */
 	modified: Change[];
+
+	/**
+	 * Selects restoration of originals instead of producing new adapter bytes.
+	 */
 	uninstall: boolean;
 }
 
+/**
+ * Rejects untested DSH releases rather than relying only on matching patch text.
+ *
+ * @param root - DSH installation root containing package metadata.
+ * @throws If metadata cannot be read or parsed, or its package name or version is unsupported.
+ */
 function validateRoot(root: string) {
 	const pkg: unknown = JSON.parse(
 		readFileSync(join(root, "package.json"), "utf8"),
@@ -237,6 +442,13 @@ function validateRoot(root: string) {
 		throw new Error(`Adapter requires @deepseek-ai/dsh@${VERSION}`);
 }
 
+/**
+ * Uses resolved module entries so backups follow actual package destinations.
+ *
+ * @param root - Validated DSH root used for module resolution.
+ * @returns Expected bundle/helper paths and each bundle's package name.
+ * @throws If module resolution or realpath fails, or an entry is not index.js.
+ */
 function resolveTargets(root: string) {
 	const expected: string[] = [];
 	const packageByEntry = new Map<string, string>();
@@ -256,6 +468,13 @@ function resolveTargets(root: string) {
 	return { expected, packageByEntry };
 }
 
+/**
+ * Prevents reusing ownership evidence from another root, release, or schema.
+ *
+ * @param previous - Existing manifest, or null when absent.
+ * @param root - Resolved root that must match existing ownership evidence.
+ * @throws If an existing manifest identifies another root, version, or format.
+ */
 function validateManifestIdentity(
 	previous: BackupManifest | null,
 	root: string,
@@ -269,6 +488,13 @@ function validateManifestIdentity(
 		throw new Error("Invalid adapter backup manifest");
 }
 
+/**
+ * Rejects incomplete target sets and unusable hashes before any restore writes.
+ *
+ * @param previous - Shape-checked manifest, or null when absent.
+ * @param expected - Complete target set resolved from installed packages.
+ * @throws If an existing manifest has invalid hashes or does not match the expected target set.
+ */
 function validateManifestTargets(
 	previous: BackupManifest | null,
 	expected: string[],
@@ -294,6 +520,16 @@ function validateManifestTargets(
 		throw new Error("Invalid adapter backup targets");
 }
 
+/**
+ * Recovers pre-adapter bytes only when managed targets and backups still match their hashes.
+ *
+ * @param path - Expected target destination.
+ * @param current - Planning-time target bytes, or null when absent.
+ * @param saved - Prior manifest entry, or undefined for a first installation.
+ * @param storage - Directory containing original content-addressed blobs.
+ * @returns Pre-adapter bytes, or null for an originally absent helper.
+ * @throws If ownership drift, backup corruption, a missing bundle, an unmanaged helper, or a read failure is detected.
+ */
 function restoreOriginal(
 	path: string,
 	current: Buffer | null,
@@ -320,6 +556,17 @@ function restoreOriginal(
 	return original;
 }
 
+/**
+ * Uses originals rather than current patched bundles to avoid stacking adapter edits.
+ *
+ * @param path - Expected bundle or helper destination.
+ * @param original - Pre-adapter bytes; null denotes original absence.
+ * @param uninstall - Whether to restore originals instead of installing.
+ * @param packageByEntry - Audited package names indexed by bundle destination.
+ * @param helpers - Helper snapshots; null is permitted only when not needed.
+ * @returns Desired target bytes, or null when restoration removes a previously absent target.
+ * @throws If a required target or helper is missing, or bundle patch validation fails.
+ */
 function nextContent(
 	path: string,
 	original: Buffer | null,
@@ -342,6 +589,16 @@ function nextContent(
 	return next;
 }
 
+/**
+ * Validates the full operation before writes; snapshots still require rechecking under the lock.
+ *
+ * @param root - Resolved DSH installation root.
+ * @param backupDir - Base directory for root-specific ownership evidence.
+ * @param sourceDir - Directory containing both runtime helpers.
+ * @param uninstall - Whether the plan restores pre-adapter targets.
+ * @returns Validated ownership, source, and target snapshots with the byte-changing subset.
+ * @throws If package, manifest, target, backup, helper, or patch validation fails, or filesystem access fails.
+ */
 function planInstallation(
 	root: string,
 	backupDir: string,
@@ -392,6 +649,12 @@ function planInstallation(
 	};
 }
 
+/**
+ * Prevents mixing helper revisions after a plan has captured source bytes.
+ *
+ * @param plan - Plan whose helper snapshots must remain stable; null helpers require no check.
+ * @throws If helper bytes differ from the plan or reading them fails.
+ */
 function verifyHelpers(plan: InstallPlan) {
 	if (!plan.helpers) return;
 	for (const [name, data] of Object.entries(plan.helpers))
@@ -399,23 +662,48 @@ function verifyHelpers(plan: InstallPlan) {
 			throw new Error(`Helper source changed during installation: ${name}`);
 }
 
+/**
+ * Refuses to replace ownership evidence changed since planning.
+ *
+ * @param plan - Plan containing the original manifest snapshot, including absence.
+ * @throws If manifest bytes or existence changed, or reading fails.
+ */
 function verifyManifest(plan: InstallPlan) {
 	if (!same(read(plan.manifestPath), plan.manifestBytes))
 		throw new Error("Concurrent adapter manifest change");
 }
 
+/**
+ * Checks even unchanged targets so external edits cannot be claimed as adapter-owned.
+ *
+ * @param changes - Target snapshots to verify.
+ * @param state - Current for pre-write checks; next for post-write checks.
+ * @throws If any target differs from the requested snapshot or reading fails.
+ */
 function verifyTargets(changes: Change[], state: "current" | "next") {
 	for (const change of changes)
 		if (!same(read(change.path), change[state]))
 			throw new Error(`Concurrent adapter target change: ${change.path}`);
 }
 
+/**
+ * Requires source and ownership stability in addition to destination stability.
+ *
+ * @param plan - Planned snapshots to compare with disk.
+ * @throws If any source, manifest, or target has drifted, or reading fails.
+ */
 function verifyPlan(plan: InstallPlan) {
 	verifyHelpers(plan);
 	verifyManifest(plan);
 	verifyTargets(plan.changes, "current");
 }
 
+/**
+ * Preserves pre-adapter bytes without replacing existing content-addressed blobs.
+ *
+ * @param plan - Validated plan; uninstall mode does not create backups.
+ * @throws If an existing blob differs, or reading, directory creation, or exclusive writing fails.
+ */
 function saveBackups(plan: InstallPlan) {
 	if (plan.uninstall) return;
 	for (const change of plan.changes) {
@@ -431,11 +719,24 @@ function saveBackups(plan: InstallPlan) {
 	}
 }
 
+/**
+ * Distinguishes removal from an empty replacement; callers must validate ownership first.
+ *
+ * @param path - Destination authorized by the plan.
+ * @param content - Replacement bytes, or null to remove the target.
+ * @throws If removal or atomic replacement fails, including temporary-file cleanup.
+ */
 function writeContent(path: string, content: Buffer | null) {
 	if (content === null) unlinkSync(path);
 	else atomic(path, content);
 }
 
+/**
+ * Publishes ownership only after target verification; uninstall removes evidence, not backup blobs.
+ *
+ * @param plan - Committed target plan whose ownership evidence is to be published.
+ * @throws If manifest removal or atomic writing fails.
+ */
 function writeManifest(plan: InstallPlan) {
 	const { uninstall, manifestPath, root, changes } = plan;
 	if (uninstall) unlinkSync(manifestPath);
@@ -460,6 +761,12 @@ function writeManifest(plan: InstallPlan) {
 		);
 }
 
+/**
+ * Leaves external edits intact instead of forcing restoration after a failed commit.
+ *
+ * @param completed - Written changes, reversed in place; rollback uses current rather than original bytes.
+ * @throws If reading or restoring an eligible target fails; rollback may then be incomplete.
+ */
 function rollback(completed: Change[]) {
 	for (const change of completed.reverse()) {
 		if (!same(read(change.path), change.next)) continue;
@@ -467,6 +774,12 @@ function rollback(completed: Change[]) {
 	}
 }
 
+/**
+ * Rechecks ownership before publication and attempts rollback only for its own completed writes.
+ *
+ * @param plan - Locked and validated plan to commit.
+ * @throws If drift checks or writes fail; rollback failures may replace the initiating error.
+ */
 function commitPlan(plan: InstallPlan) {
 	const completed: Change[] = [];
 	try {
@@ -485,6 +798,12 @@ function commitPlan(plan: InstallPlan) {
 	}
 }
 
+/**
+ * Retains nonempty helper directories because they may contain files owned by others.
+ *
+ * @param changes - Expected helper and bundle destinations after the operation.
+ * @throws If directory inspection or removal fails, including concurrent directory changes.
+ */
 function cleanHelperDirectories(changes: Change[]) {
 	for (const change of changes)
 		if (
@@ -496,6 +815,12 @@ function cleanHelperDirectories(changes: Change[]) {
 			rmdirSync(dirname(change.path));
 }
 
+/**
+ * Serializes adapter operations while still checking for writers that ignore the lock.
+ *
+ * @param plan - Validated plan to execute; callers must skip this for dry runs.
+ * @throws If the exclusive lock cannot be acquired, validation or commit fails, or cleanup fails.
+ */
 function executePlan(plan: InstallPlan) {
 	mkdirSync(plan.storage, { recursive: true });
 	const lock = join(plan.storage, "operation.lock");
@@ -514,6 +839,14 @@ function executePlan(plan: InstallPlan) {
 	}
 }
 
+/**
+ * Reports validation-only mode ahead of write outcomes; absent ownership is handled by the caller.
+ *
+ * @param dryRun - Whether no writes will be attempted.
+ * @param uninstall - Whether originals are being restored.
+ * @param modified - Targets whose planned bytes differ from their current snapshots.
+ * @returns Dry-run, uninstalled, installed, or unchanged status in that precedence.
+ */
 function resultStatus(
 	dryRun: boolean,
 	uninstall: boolean,

@@ -3,8 +3,21 @@ import { dirname, join, relative, resolve } from "node:path";
 import yaml from "js-yaml";
 import { YamlIncludeReader } from "./reader.js";
 
+/**
+ * Keeps editor integration structural so copied runtime helpers do not import YAML nodes.
+ */
 interface IncludeDocument {
+	/**
+	 * Preserves syntax nodes rather than flattening include tags into configuration values.
+	 */
 	contents: unknown;
+
+	/**
+	 * Delegates row lookup to the host rather than assuming its scalar representation.
+	 *
+	 * @param path - Keys and indexes relative to the containing YAML document.
+	 * @returns A host-owned value that must be compared without type coercion.
+	 */
 	getIn(path: Iterable<string | number>): unknown;
 }
 

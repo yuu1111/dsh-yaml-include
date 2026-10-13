@@ -1,36 +1,35 @@
-[日本語](README.ja.md)
-
 # dsh-yaml-include
+
+[日本語](README.ja.md)
 
 Native local-file `!include` support for DeepSeek Harness YAML configuration, without JavaScript configuration expressions or generated combined files.
 
-**Compatibility: @deepseek-ai/dsh 0.2.0-rc.2 only.** This is a bootstrap adapter, not an ordinary runtime plugin. It explicitly extends the installed boot parser, Cordis Include and ConfigEditor. No global YAML schema is modified. Other DSH versions and unexpected parser shapes are refused before any target is written.
+**Compatibility: @deepseek-ai/dsh 0.2.0-rc.2 only.** This adapter patches boot-time configuration loading before profiles are read; it does not need to be enabled as an ordinary bundle plugin. It explicitly extends the installed boot parser, Cordis Include and ConfigEditor. No global YAML schema is modified. Other DSH versions and unexpected parser shapes are refused before any target is written.
 
 ## Install
 
-The npm package is not published yet. Public source: [yuu1111/dsh-yaml-include](https://github.com/yuu1111/dsh-yaml-include).
+The first npm release of `dsh-yaml-include@0.1.0` is still pending. After publication, install the public package and run its packaged CLI:
+
+```sh
+pnpm add --global dsh-yaml-include
+dsh-yaml-include --dsh-dir /exact/dsh/package --dry-run
+dsh-yaml-include --dsh-dir /exact/dsh/package
+```
+
+Replace `/exact/dsh/package` with the actual installed `@deepseek-ai/dsh` package directory, not its executable or the adapter directory. Always pass `--dsh-dir`; npm and pnpm installations can live in different locations. For a global installation, `npm root -g` or `pnpm root -g` can help locate the package, but verify that it belongs to the DSH command being used. If pnpm's global bin directory is not on PATH, run `pnpm setup` and reopen the shell. Node module resolution supports nested npm/pnpm dependencies and hoisted local dependencies.
+
+### Install from source before publication
+
+The public source is [yuu1111/dsh-yaml-include](https://github.com/yuu1111/dsh-yaml-include). With pnpm 12.3.4 and Node.js available:
 
 ```sh
 git clone https://github.com/yuu1111/dsh-yaml-include.git
 cd dsh-yaml-include
 pnpm install --frozen-lockfile --ignore-scripts
 pnpm run check
+node dist/src/install.js --dsh-dir /exact/dsh/package --dry-run
+node dist/src/install.js --dsh-dir /exact/dsh/package
 ```
-
-Select the exact DSH installation to modify. For a global pnpm installation, run `pnpm setup` once and reopen the shell if the global bin directory is not on PATH:
-
-```powershell
-$dshDir = Join-Path (pnpm root -g) '@deepseek-ai/dsh'
-node dist/src/install.js --dsh-dir $dshDir --dry-run
-node dist/src/install.js --dsh-dir $dshDir
-```
-
-```sh
-node dist/src/install.js --dsh-dir "$(pnpm root -g)/@deepseek-ai/dsh" --dry-run
-node dist/src/install.js --dsh-dir "$(pnpm root -g)/@deepseek-ai/dsh"
-```
-
-The same CLI is packaged as `dsh-yaml-include`. Explicit `--dsh-dir` avoids patching a different DSH installation. Node module resolution supports nested npm/pnpm dependencies and hoisted local dependencies.
 
 Installation does not start or restart a server. **Restart DSH after applying the adapter**, and after editing included files.
 
@@ -84,10 +83,14 @@ A trusted local filesystem is required. This is not an OS sandbox against anothe
 Original backups are stored outside the npm package under `~/.dsh-yaml-include/native-backups`; `--backup-dir` can relocate them. SHA-256 validation checks installed targets and original backups. The installer plans all targets first, prevents concurrent operations and rolls back completed writes on a handled failure. Re-running is idempotent and can update helpers while retaining original backups. Unexpected local changes are refused rather than overwritten.
 
 ```sh
-node dist/src/install.js --dsh-dir /exact/dsh/package --uninstall
+dsh-yaml-include --dsh-dir /exact/dsh/package --uninstall
 ```
 
-Remove native tags before uninstalling or updating DSH. A DSH update may replace the adapter; do not activate include-dependent configuration until a supported adapter is reapplied. A changed DSH version needs a compatible adapter release, not a forced installation. Keep backups until restoration is no longer needed.
+For a source installation, use `node dist/src/install.js` in place of `dsh-yaml-include` in the uninstall command. Remove native tags before uninstalling or updating DSH. A DSH update may replace the adapter; do not activate include-dependent configuration until a supported adapter is reapplied. A changed DSH version needs a compatible adapter release, not a forced installation. Keep backups until restoration is no longer needed.
+
+## npm releases
+
+Release automation is prepared, but the first bootstrap publication and npm Trusted Publisher setup have not been completed. The release workflow runs when a GitHub Release is published: tag `v0.1.0` must match package version `0.1.0`. It builds with pnpm, runs strict checks and smoke tests, and passes the packed tarball as an artifact to a separate job for OIDC-authenticated npm publication with provenance. Development remains on pnpm; only registry publication uses the npm CLI, not `pnpm publish`. See the [release guide](docs/releasing.md) for bootstrap and Trusted Publisher setup before publishing a Release.
 
 ## Development
 
