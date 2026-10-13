@@ -1,21 +1,26 @@
 # Publishing dsh-yaml-include
 
-This repository is prepared for public releases, but preparing the workflow does not publish the package. The supported host remains `@deepseek-ai/dsh@0.2.0-rc.2` only.
+The supported host remains `@deepseek-ai/dsh@0.2.0-rc.2` only. Official versions are published through GitHub Actions with provenance.
 
-## One-time setup
+## Publisher configuration
 
-The package has not been bootstrapped on npm yet. Do not create a GitHub Release until the bootstrap and Trusted Publisher configuration are complete.
+The npm namespace was initially registered as `0.0.0-stage`. Do not repeat bootstrap registration, overwrite that version, or unpublish it.
 
-1. Confirm the package name `dsh-yaml-include`, public access, bootstrap version `0.0.0`, and dist-tag `bootstrap` with the maintainer before publishing. This permanently reserves the name and version.
-2. Use an isolated copy of the verified tarball for the bootstrap, set its version to `0.0.0`, and remove publishing lifecycle scripts. Keep the working tree unchanged. Inspect that copy with `npm pack --dry-run --ignore-scripts`, then publish only after explicit approval with `npm publish --tag bootstrap --access public --ignore-scripts`. npm authentication and 2FA may require a maintainer interaction. The official `0.1.0` release is published later through GitHub Actions with provenance, not locally.
-3. Verify the GitHub deployment environment `npm`, configured during preparation with a `v*` tag-only policy and required maintainer approval. Keep these protections enabled before publishing.
-4. Use npm CLI 11.15 or later to configure the GitHub Trusted Publisher, matching repository `yuu1111/dsh-yaml-include`, workflow `release.yml`, and environment `npm`:
+The GitHub deployment environment `npm` is restricted to `v*` release tags and requires maintainer approval. The npm Trusted Publisher matches repository `yuu1111/dsh-yaml-include`, workflow `release.yml`, and environment `npm`.
 
-   ```sh
-   npm trust github dsh-yaml-include --file release.yml --repository yuu1111/dsh-yaml-include --environment npm --allow-publish --yes
-   ```
+Inspect the current relationship with npm CLI 11.15 or later:
 
-Do not add an `NPM_TOKEN` or another long-lived publishing token. Verify the Trusted Publisher configuration on npm before the first official release. Bootstrap and authentication are intentionally not automated by this repository.
+```sh
+npm trust list dsh-yaml-include --json
+```
+
+If the repository, workflow, or environment changes, update the Trusted Publisher after reviewing the new publication boundary:
+
+```sh
+npm trust github dsh-yaml-include --file release.yml --repository yuu1111/dsh-yaml-include --environment npm --allow-publish --yes
+```
+
+Do not add an `NPM_TOKEN` or another long-lived publishing token. Authentication and two-factor prompts must be completed by the maintainer in a trusted interactive terminal, never by sharing codes in chat.
 
 ## Release a verified version
 

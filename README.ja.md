@@ -8,7 +8,7 @@ DeepSeek Harness の YAML 設定で、ローカルファイルを `!include` タ
 
 ## インストール
 
-`dsh-yaml-include@0.1.0` は初回の npm 公開前です. 公開後は、次の手順で公開パッケージをインストールし、配布 CLI を実行できます.
+次の手順で npm パッケージをインストールし、配布 CLI を実行します.
 
 ```sh
 pnpm add --global dsh-yaml-include
@@ -20,7 +20,7 @@ dsh-yaml-include --dsh-dir /exact/dsh/package
 
 npm と pnpm ではインストール先が異なることがあるため、必ず `--dsh-dir` を明示してください. グローバルインストール先を探すには `npm root -g` や `pnpm root -g` を使えますが、実行している DSH に対応するパッケージか確認が必要です. pnpm のグローバル実行ファイルディレクトリが PATH にない場合は、先に `pnpm setup` を実行してシェルを開き直してください. Node のモジュール解決に対応しており、npm/pnpm の入れ子になった依存関係や、ローカルで巻き上げ（hoist）された依存関係も扱えます.
 
-### 公開前にソースからインストールする
+### ソースからインストールする
 
 ソースは [yuu1111/dsh-yaml-include](https://github.com/yuu1111/dsh-yaml-include) で公開しています. pnpm 12.3.4 と Node.js を用意して、次のコマンドを実行してください.
 
@@ -94,7 +94,7 @@ dsh-yaml-include --dsh-dir /exact/dsh/package --uninstall
 
 ## npm への公開
 
-公開用の自動化を準備していますが、初回の bootstrap 公開と npm Trusted Publisher の設定は未実施です. 公開ワークフローは GitHub Release の公開時に実行され、タグ `v0.1.0` とパッケージのバージョン `0.1.0` の一致を確認します. pnpm でのビルド、strict チェック、smoke テスト後に、pack した tarball を artifact として別ジョブに渡し、OIDC 認証と provenance 付きで npm に公開する構成です. 開発は引き続き pnpm を使い、registry への公開にだけ npm CLI を使います. `pnpm publish` は使いません. Release を公開する前に、[公開手順](docs/releasing.md) で bootstrap と Trusted Publisher の設定を確認してください.
+npm のパッケージ名は登録済みで、GitHub Actions からの公開には設定済みの npm Trusted Publisher を使います. 公開ワークフローは GitHub Release の公開時に実行され、タグ `v0.1.0` とパッケージのバージョン `0.1.0` の一致を確認します. pnpm でのビルド、strict チェック、smoke テスト後に、pack した tarball を artifact として別ジョブに渡し、OIDC 認証と provenance 付きで npm に公開する構成です. 開発は引き続き pnpm を使い、registry への公開にだけ npm CLI を使います. `pnpm publish` は使いません. Release を公開する前に、[公開手順](docs/releasing.md) で Trusted Publisher の設定とリリース手順を確認してください.
 
 ## 開発と検証
 

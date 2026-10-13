@@ -8,7 +8,7 @@ Native local-file `!include` support for DeepSeek Harness YAML configuration, wi
 
 ## Install
 
-The first npm release of `dsh-yaml-include@0.1.0` is still pending. After publication, install the public package and run its packaged CLI:
+Install the npm package and run its packaged CLI:
 
 ```sh
 pnpm add --global dsh-yaml-include
@@ -18,7 +18,7 @@ dsh-yaml-include --dsh-dir /exact/dsh/package
 
 Replace `/exact/dsh/package` with the actual installed `@deepseek-ai/dsh` package directory, not its executable or the adapter directory. Always pass `--dsh-dir`; npm and pnpm installations can live in different locations. For a global installation, `npm root -g` or `pnpm root -g` can help locate the package, but verify that it belongs to the DSH command being used. If pnpm's global bin directory is not on PATH, run `pnpm setup` and reopen the shell. Node module resolution supports nested npm/pnpm dependencies and hoisted local dependencies.
 
-### Install from source before publication
+### Install from source
 
 The public source is [yuu1111/dsh-yaml-include](https://github.com/yuu1111/dsh-yaml-include). With pnpm 12.3.4 and Node.js available:
 
@@ -90,7 +90,7 @@ For a source installation, use `node dist/src/install.js` in place of `dsh-yaml-
 
 ## npm releases
 
-Release automation is prepared, but the first bootstrap publication and npm Trusted Publisher setup have not been completed. The release workflow runs when a GitHub Release is published: tag `v0.1.0` must match package version `0.1.0`. It builds with pnpm, runs strict checks and smoke tests, and passes the packed tarball as an artifact to a separate job for OIDC-authenticated npm publication with provenance. Development remains on pnpm; only registry publication uses the npm CLI, not `pnpm publish`. See the [release guide](docs/releasing.md) for bootstrap and Trusted Publisher setup before publishing a Release.
+The npm namespace is registered and GitHub Actions publication uses the configured npm Trusted Publisher. The release workflow runs when a GitHub Release is published: tag `v0.1.0` must match package version `0.1.0`. It builds with pnpm, runs strict checks and smoke tests, and passes the packed tarball as an artifact to a separate job for OIDC-authenticated npm publication with provenance. Development remains on pnpm; only registry publication uses the npm CLI, not `pnpm publish`. See the [release guide](docs/releasing.md) for publisher verification and the release procedure.
 
 ## Development
 
