@@ -91,6 +91,8 @@ Remove native tags before uninstalling or updating DSH. A DSH update may replace
 
 ## Development
 
+Quality checks require Bun 1.4.3 in addition to Node.js. The installed CLI does not require Bun.
+
 ```sh
 npm ci --ignore-scripts
 npm run check

@@ -9,6 +9,7 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test, { type TestContext } from "node:test";
+import { inspect } from "node:util";
 import { YamlIncludeReader } from "../src/reader.js";
 import { errorCode, record } from "./assertions.js";
 
@@ -74,7 +75,8 @@ test("Missing roots have safe stable errors", () => {
 		(error: unknown) =>
 			errorCode(error, "FILE_UNAVAILABLE") &&
 			error instanceof Error &&
-			!error.message.includes(process.cwd()),
+			!error.message.includes(process.cwd()) &&
+			!inspect(error, { depth: null }).includes("missing-root-38c53726"),
 	);
 });
 test("Non-finite numbers and secret include filenames are not exposed", (t) => {
@@ -88,7 +90,7 @@ test("Non-finite numbers and secret include filenames are not exposed", (t) => {
 		(error: unknown) =>
 			errorCode(error, "FILE_UNAVAILABLE") &&
 			error instanceof Error &&
-			!error.message.includes("PRIVATE-VALUE"),
+			!inspect(error, { depth: null }).includes("PRIVATE-VALUE"),
 	);
 });
 test("Cycles are rejected with a stable error code", (t) => {
@@ -106,7 +108,7 @@ test("Missing files and malformed YAML do not expose document contents", (t) => 
 		(error: unknown) =>
 			errorCode(error, "INVALID_YAML") &&
 			error instanceof Error &&
-			!error.message.includes("PRIVATE-VALUE"),
+			!inspect(error, { depth: null }).includes("PRIVATE-VALUE"),
 	);
 });
 test("Duplicate keys and executable tags are rejected", (t) => {
@@ -125,7 +127,7 @@ test("Absolute paths, URLs and root escapes are rejected", (t) => {
 	rejects(reader, "https://example.com/x.yml", "INVALID_PATH");
 });
 test("Symlink escapes are rejected before reading the target", (t) => {
-	const { reader, root } = fixture(t, {
+	const { root } = fixture(t, {
 		"nested/main.yml": "!include outside/secret.yml",
 		"secret.yml": "secret: hidden",
 	});

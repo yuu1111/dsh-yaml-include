@@ -8,6 +8,15 @@ interface IncludeDocument {
 	getIn(path: Iterable<string | number>): unknown;
 }
 
+/**
+ * Parses a document without expanding includes outside its package boundary.
+ *
+ * @param content - Candidate YAML text; the original file is not reread.
+ * @param filename - Document path used to anchor relative includes.
+ * @param schema - Existing host schema retained for compatibility.
+ * @returns The parsed YAML value without evaluating expression tags.
+ * @throws A parsing or filesystem error when the document is invalid.
+ */
 export function parseYamlWithIncludes(
 	content: string,
 	filename: string,
@@ -31,6 +40,14 @@ export function parseYamlWithIncludes(
 	);
 }
 
+/**
+ * Detects include tags without reading their referenced files.
+ *
+ * @param content - YAML text to inspect.
+ * @param schema - Host schema used to recognize existing tags.
+ * @returns Whether a real include tag occurs, excluding comments and strings.
+ * @throws A parsing error when the YAML text is invalid.
+ */
 export function containsYamlInclude(
 	content: string,
 	schema: yaml.Schema = yaml.JSON_SCHEMA,
@@ -47,6 +64,14 @@ export function containsYamlInclude(
 	return found;
 }
 
+/**
+ * Checks aliases as well as direct tags so editing cannot bypass include protection.
+ *
+ * @param node - Candidate syntax node.
+ * @param document - Containing document used to resolve aliases.
+ * @param ancestors - Active traversal nodes used to avoid cyclic aliases.
+ * @returns Whether an include tag is reachable from the node.
+ */
 export function hasIncludeNode(
 	node: unknown,
 	document: IncludeDocument,
@@ -70,6 +95,13 @@ export function hasIncludeNode(
 	return found;
 }
 
+/**
+ * Rejects include-owned rows rather than silently flattening their source files.
+ *
+ * @param document - Profile patch document to inspect.
+ * @param id - Target row identifier, including duplicate matching rows.
+ * @throws An error when a matching row contains an include.
+ */
 export function assertEditableIncludeRows(
 	document: IncludeDocument,
 	id: unknown,

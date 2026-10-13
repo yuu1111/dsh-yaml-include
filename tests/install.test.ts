@@ -66,7 +66,7 @@ function fixture(
 		const path = join(packageDir, "lib", "index.js");
 		put(
 			join(packageDir, "package.json"),
-			JSON.stringify({ name: "@deepseek-ai/" + name, main: "lib/index.js" }),
+			JSON.stringify({ name: `@deepseek-ai/${name}`, main: "lib/index.js" }),
 		);
 		put(path, text);
 		originals.set(path, text);
@@ -199,7 +199,7 @@ test("installed drift rejects updates and uninstall without overwriting user cha
 	install(f.options);
 	const path = [...f.originals.keys()][1];
 	assert.ok(path);
-	const changed = readFileSync(path, "utf8") + "\n// local change";
+	const changed = `${readFileSync(path, "utf8")}\n// local change`;
 	f.put(path, changed);
 	assert.throws(() => install(f.options), /drift/);
 	assert.throws(() => install({ ...f.options, uninstall: true }), /drift/);

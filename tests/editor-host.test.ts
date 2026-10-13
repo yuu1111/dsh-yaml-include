@@ -203,7 +203,7 @@ async function fixture(t: TestContext, profileText = "[]\n") {
 	assert.deepEqual(loaded.skippedBundles, []);
 	assert.equal(loaded.layers.length, 1);
 	ctx = new Context();
-	ctx.baseUrl = pathToFileURL(root).href + "/";
+	ctx.baseUrl = `${pathToFileURL(root).href}/`;
 	const loaderFiber = ctx.plugin(Loader);
 	await loaderFiber;
 	const received: Config[] = [];

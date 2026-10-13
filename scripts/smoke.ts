@@ -32,7 +32,7 @@ function run(
 	});
 	if (child.error) throw child.error;
 	if (child.status !== 0)
-		throw new Error("Command failed (" + child.status + "): " + args.join(" "));
+		throw new Error(`Command failed (${child.status}): ${args.join(" ")}`);
 }
 
 const npm = (
@@ -58,7 +58,7 @@ try {
 			"--no-audit",
 			"--no-fund",
 			"@deepseek-ai/dsh@0.2.0-rc.2",
-			join(temp, "dsh-yaml-include-" + version + ".tgz"),
+			join(temp, `dsh-yaml-include-${version}.tgz`),
 		],
 		temp,
 	);
@@ -68,7 +68,7 @@ try {
 		"dsh-app-boot",
 		"cordis-plugin-include",
 		"dsh-config-editor",
-	].map((name) => require.resolve("@deepseek-ai/" + name));
+	].map((name) => require.resolve(`@deepseek-ai/${name}`));
 	const originals = targets.map(hash);
 	const args = [
 		"exec",
