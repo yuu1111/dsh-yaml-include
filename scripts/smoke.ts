@@ -5,6 +5,7 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
+	realpathSync,
 	rmSync,
 	writeFileSync,
 } from "node:fs";
@@ -14,8 +15,12 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const project = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
-const npmCli = process.env.npm_execpath;
-if (!npmCli) throw new Error("Run with npm run smoke");
+const pnpmCli = process.env.npm_execpath;
+if (
+	!pnpmCli ||
+	!/^pnpm\/12\.3\.4(?:\s|$)/.test(process.env.npm_config_user_agent ?? "")
+)
+	throw new Error("Run with pnpm@12.3.4 run smoke");
 const temp = mkdtempSync(join(tmpdir(), "dsh-yaml-package-"));
 const hash = (file: string) =>
 	createHash("sha256").update(readFileSync(file)).digest("hex");
@@ -24,8 +29,9 @@ function run(
 	args: string[],
 	cwd = project,
 	env: NodeJS.ProcessEnv = process.env,
+	executable = process.execPath,
 ) {
-	const child = spawnSync(process.execPath, args, {
+	const child = spawnSync(executable, args, {
 		cwd,
 		env,
 		stdio: "inherit",
@@ -35,14 +41,24 @@ function run(
 		throw new Error(`Command failed (${child.status}): ${args.join(" ")}`);
 }
 
-const npm = (
+const pnpm = (
 	args: string[],
 	cwd = project,
 	env: NodeJS.ProcessEnv = process.env,
-) => run([npmCli, ...args], cwd, env);
+) =>
+	/\.(?:cjs|mjs|js)$/i.test(pnpmCli)
+		? run([pnpmCli, ...args], cwd, env)
+		: run(args, cwd, env, pnpmCli);
 try {
-	writeFileSync(join(temp, "package.json"), '{"private":true,"type":"module"}');
-	npm(["pack", "--pack-destination", temp]);
+	writeFileSync(
+		join(temp, "package.json"),
+		JSON.stringify({
+			private: true,
+			type: "module",
+			packageManager: "pnpm@12.3.4",
+		}),
+	);
+	pnpm(["pack", "--pack-destination", temp]);
 	const metadata: unknown = JSON.parse(
 		readFileSync(join(project, "package.json"), "utf8"),
 	);
@@ -51,45 +67,48 @@ try {
 	);
 	const version = metadata.version;
 	assert.equal(typeof version, "string");
-	npm(
+	pnpm(
 		[
-			"install",
+			"add",
 			"--ignore-scripts",
-			"--no-audit",
-			"--no-fund",
+			"--ignore-workspace",
+			"--store-dir",
+			join(temp, "store"),
 			"@deepseek-ai/dsh@0.2.0-rc.2",
 			join(temp, `dsh-yaml-include-${version}.tgz`),
 		],
 		temp,
 	);
-	const dsh = join(temp, "node_modules/@deepseek-ai/dsh");
-	const require = createRequire(join(dsh, "package.json"));
+	const dsh = realpathSync(join(temp, "node_modules/@deepseek-ai/dsh"));
+	const hostEntry = join(dsh, "package.json");
+	const require = createRequire(hostEntry);
 	const targets = [
 		"dsh-app-boot",
 		"cordis-plugin-include",
 		"dsh-config-editor",
-	].map((name) => require.resolve(`@deepseek-ai/${name}`));
+	].map((name) => realpathSync(require.resolve(`@deepseek-ai/${name}`)));
 	const originals = targets.map(hash);
 	const args = [
 		"exec",
-		"--no",
-		"--",
+		"--ignore-workspace",
+		"--store-dir",
+		join(temp, "store"),
 		"dsh-yaml-include",
 		"--dsh-dir",
 		dsh,
 		"--backup-dir",
 		join(temp, "backups"),
 	];
-	npm([...args, "--dry-run"], temp);
+	pnpm([...args, "--dry-run"], temp);
 	assert.deepEqual(targets.map(hash), originals);
-	npm(args, temp);
+	pnpm(args, temp);
 	const installed = targets.map(hash);
 	assert.ok(installed.every((value, index) => value !== originals[index]));
-	npm(args, temp);
+	pnpm(args, temp);
 	assert.deepEqual(targets.map(hash), installed);
 	run(["--test", "dist/tests/*.test.js"], project, {
 		...process.env,
-		DSH_TEST_HOST_ENTRY: join(dsh, "package.json"),
+		DSH_TEST_HOST_ENTRY: hostEntry,
 	});
 	const fixture = join(temp, "fixture");
 	mkdirSync(fixture);
@@ -106,13 +125,13 @@ try {
 	writeFileSync(
 		probe,
 		'import assert from "node:assert/strict"; import {createRequire} from "node:module"; import {pathToFileURL} from "node:url"; const req=createRequire(' +
-			JSON.stringify(join(dsh, "package.json")) +
+			JSON.stringify(hostEntry) +
 			'); const app=await import(pathToFileURL(req.resolve("@deepseek-ai/dsh-app-boot")).href); assert.deepEqual(app.loadOverlayPatches("test",' +
 			JSON.stringify(join(fixture, "models.patch.yml")) +
 			'),[{id:"llm",config:{providers:{example:{models:[{id:"example"}]}}}}]); console.log("PACKED_NATIVE_PARSE_OK")',
 	);
 	run([probe], temp);
-	npm([...args, "--uninstall"], temp);
+	pnpm([...args, "--uninstall"], temp);
 	assert.deepEqual(targets.map(hash), originals);
 	console.log(
 		"PACKAGE_SMOKE_OK: clean official DSH, packed CLI, native parse, editor tests, idempotence and byte-exact restoration",

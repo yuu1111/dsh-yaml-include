@@ -33,15 +33,15 @@
 		"node": ">=22.19"
 	},
 	"scripts": {
-		"test": "npm run build && node --test dist/tests/*.test.js",
+		"test": "pnpm run build && node --test dist/tests/*.test.js",
 		"check:quality": "quality-check",
 		"format": "biome format --write .",
-		"check": "npm run typecheck && npm test",
-		"install:native": "npm run build && node dist/src/install.js",
-		"smoke": "npm run build && node dist/scripts/smoke.js",
+		"check": "pnpm run typecheck && pnpm test",
+		"install:native": "pnpm run build && node dist/src/install.js",
+		"smoke": "pnpm run build && node dist/scripts/smoke.js",
 		"build": "tsc -p tsconfig.build.json",
 		"typecheck": "tsc --noEmit",
-		"prepack": "npm run build"
+		"prepack": "pnpm run build"
 	},
 	"dsh": {
 		"bundle": {
@@ -76,5 +76,6 @@
 	"bugs": {
 		"url": "https://github.com/yuu1111/dsh-yaml-include/issues"
 	},
-	"types": "dist/src/native.d.ts"
+	"types": "dist/src/native.d.ts",
+	"packageManager": "pnpm@12.3.4"
 }

@@ -13,21 +13,21 @@ npm パッケージはまだ公開していません. ソースは [yuu1111/dsh-
 ```sh
 git clone https://github.com/yuu1111/dsh-yaml-include.git
 cd dsh-yaml-include
-npm ci --ignore-scripts
-npm run check
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm run check
 ```
 
-変更する DSH のインストール先を明示してください. グローバルにインストールした DSH には、次のコマンドを使います. まず `--dry-run` で変更予定を確認し、その後に適用します.
+変更する DSH のインストール先を明示してください. pnpm のグローバル実行ファイルディレクトリが PATH にない場合は、先に `pnpm setup` を実行してシェルを開き直してください. pnpm でグローバルにインストールした DSH には、次のコマンドを使います. まず `--dry-run` で変更予定を確認し、その後に適用します.
 
 ```powershell
-$dshDir = Join-Path (npm root -g) '@deepseek-ai/dsh'
+$dshDir = Join-Path (pnpm root -g) '@deepseek-ai/dsh'
 node dist/src/install.js --dsh-dir $dshDir --dry-run
 node dist/src/install.js --dsh-dir $dshDir
 ```
 
 ```sh
-node dist/src/install.js --dsh-dir "$(npm root -g)/@deepseek-ai/dsh" --dry-run
-node dist/src/install.js --dsh-dir "$(npm root -g)/@deepseek-ai/dsh"
+node dist/src/install.js --dsh-dir "$(pnpm root -g)/@deepseek-ai/dsh" --dry-run
+node dist/src/install.js --dsh-dir "$(pnpm root -g)/@deepseek-ai/dsh"
 ```
 
 同じ CLI を `dsh-yaml-include` コマンドとしても配布します. `--dsh-dir` を明示することで、別の DSH インストールを誤って変更するのを防げます. Node のモジュール解決に対応しており、npm/pnpm の入れ子になった依存関係や、ローカルで巻き上げ（hoist）された依存関係も扱えます.
@@ -93,23 +93,23 @@ node dist/src/install.js --dsh-dir /exact/dsh/package --uninstall
 
 ## 開発と検証
 
-`npm run check:quality` には Bun 1.4.3 が必要です. 配布インストーラーの実行に Bun は不要です.
+開発には `packageManager` で固定した pnpm 12.3.4 を使います. `pnpm run check:quality` には Bun 1.4.3 が必要です. 配布インストーラーの実行に Bun は不要です.
 
 ```sh
-npm ci --ignore-scripts
-npm run build
-npm run check
-npm run check:quality
-npm pack --dry-run
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm run build
+pnpm run check
+pnpm run check:quality
+pnpm pack --dry-run
 ```
 
-ソースは `src/*.ts` です. `npm run build` で JavaScript にビルドし、実行には `node dist/src/install.js` を使います. 配布パッケージの `exports` と `bin` も `dist/src/*.js` を参照します. TypeScript ソースを直接実行する構成ではありません.
+ソースは `src/*.ts` です. `pnpm run build` で JavaScript にビルドし、実行には `node dist/src/install.js` を使います. 配布パッケージの `exports` と `bin` も `dist/src/*.js` を参照します. TypeScript ソースを直接実行する構成ではありません.
 
-`npm run check` は、ビルド、strict モードの型チェック、テストを実行します. `check:quality` は、共有の `@yuu1111` 設定を使って Biome、TypeScript、Knip、組み込みのスタイル検査を全ソースに対して実行します. 既存の整形・スタイルの指摘も、ベースラインで除外せずに報告します. `npm run format` で整形を適用できます.
+`pnpm run check` は、ビルド、strict モードの型チェック、テストを実行します. `check:quality` は、共有の `@yuu1111` 設定を使って Biome、TypeScript、Knip、組み込みのスタイル検査を全ソースに対して実行します. 既存の整形・スタイルの指摘も、ベースラインで除外せずに報告します. `pnpm run format` で整形を適用できます.
 
 通常のテストでは、読み込み範囲の制限、グラフの上限、元ファイルの保持、配置先の変更、変更計画、繰り返し実行、復元を検証します. 実際の ConfigEditor との統合テストを実行するには、アダプターを適用済みの DSH の `package.json` のパスを、環境変数 `DSH_TEST_HOST_ENTRY` に設定してください. このテストは一時プロファイルを使い、サーバーを起動せず、実際のユーザープロファイルにもアクセスしません.
 
 ```powershell
 $env:DSH_TEST_HOST_ENTRY = Join-Path $dshDir 'package.json'
-npm run check
+pnpm run check
 ```

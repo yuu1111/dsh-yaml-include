@@ -13,21 +13,21 @@ The npm package is not published yet. Public source: [yuu1111/dsh-yaml-include](
 ```sh
 git clone https://github.com/yuu1111/dsh-yaml-include.git
 cd dsh-yaml-include
-npm ci --ignore-scripts
-npm run check
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm run check
 ```
 
-Select the exact DSH installation to modify. For a global installation:
+Select the exact DSH installation to modify. For a global pnpm installation, run `pnpm setup` once and reopen the shell if the global bin directory is not on PATH:
 
 ```powershell
-$dshDir = Join-Path (npm root -g) '@deepseek-ai/dsh'
+$dshDir = Join-Path (pnpm root -g) '@deepseek-ai/dsh'
 node dist/src/install.js --dsh-dir $dshDir --dry-run
 node dist/src/install.js --dsh-dir $dshDir
 ```
 
 ```sh
-node dist/src/install.js --dsh-dir "$(npm root -g)/@deepseek-ai/dsh" --dry-run
-node dist/src/install.js --dsh-dir "$(npm root -g)/@deepseek-ai/dsh"
+node dist/src/install.js --dsh-dir "$(pnpm root -g)/@deepseek-ai/dsh" --dry-run
+node dist/src/install.js --dsh-dir "$(pnpm root -g)/@deepseek-ai/dsh"
 ```
 
 The same CLI is packaged as `dsh-yaml-include`. Explicit `--dsh-dir` avoids patching a different DSH installation. Node module resolution supports nested npm/pnpm dependencies and hoisted local dependencies.
@@ -91,22 +91,22 @@ Remove native tags before uninstalling or updating DSH. A DSH update may replace
 
 ## Development
 
-Quality checks require Bun 1.4.3 in addition to Node.js. The installed CLI does not require Bun.
+Development uses pnpm 12.3.4, pinned in `packageManager`. Quality checks require Bun 1.4.3 in addition to Node.js. The installed CLI does not require Bun.
 
 ```sh
-npm ci --ignore-scripts
-npm run check
-npm run check:quality
-npm pack --dry-run
+pnpm install --frozen-lockfile --ignore-scripts
+pnpm run check
+pnpm run check:quality
+pnpm pack --dry-run
 ```
 
-Source, tests and scripts are written in TypeScript. `npm run build` compiles them into `dist`; the package exports and CLI use the generated JavaScript in `dist/src` and include type declarations. Run the build before using the CLI; the TypeScript source is not executed directly.
+Source, tests and scripts are written in TypeScript. `pnpm run build` compiles them into `dist`; the package exports and CLI use the generated JavaScript in `dist/src` and include type declarations. Run the build before using the CLI; the TypeScript source is not executed directly.
 
-`npm run check` runs strict type checking, builds and tests the compiled code. `check:quality` runs Biome, TypeScript, Knip and the built-in style checks using the shared `@yuu1111` configurations. Findings are reported without a baseline; `npm run format` applies formatting.
+`pnpm run check` runs strict type checking, builds and tests the compiled code. `check:quality` runs Biome, TypeScript, Knip and the built-in style checks using the shared `@yuu1111` configurations. Findings are reported without a baseline; `pnpm run format` applies formatting.
 
 The default suite checks confinement, graph limits, source preservation, relocation, planning, idempotence and restoration. Set `DSH_TEST_HOST_ENTRY` to a native-patched DSH package.json to run real ConfigEditor integration tests; these use temporary profiles and never start a server or access the real user profile.
 
 ```powershell
 $env:DSH_TEST_HOST_ENTRY = Join-Path $dshDir 'package.json'
-npm run check
+pnpm run check
 ```
