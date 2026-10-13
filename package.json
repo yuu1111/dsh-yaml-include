@@ -1,52 +1,80 @@
 {
-  "name": "dsh-yaml-include",
-  "version": "0.1.0",
-  "private": true,
-  "type": "module",
-  "description": "Native !include bootstrap adapter for DeepSeek Harness YAML configuration",
-  "main": "src/native.js",
-  "exports": {
-    ".": "./src/native.js",
-    "./reader": "./src/reader.js",
-    "./install": "./src/install.js",
-    "./cordis.patch.yml": "./cordis.patch.yml"
-  },
-  "files": [
-    "src",
-    "cordis.patch.yml",
-    "README.md"
-  ],
-  "engines": {
-    "node": ">=22.19"
-  },
-  "scripts": {
-    "test": "node --test tests/*.test.js",
-    "check": "node --check src/native.js && node --check src/reader.js && node --check src/install.js && node --test tests/*.test.js",
-    "install:native": "node src/install.js",
-    "smoke": "node scripts/smoke.js"
-  },
-  "dsh": {
-    "bundle": {
-      "patch": "./cordis.patch.yml"
-    }
-  },
-  "dependencies": {
-    "js-yaml": "^4.3.2"
-  },
-  "devDependencies": {
-    "yaml": "^2.9.1"
-  },
-  "bin": {
-    "dsh-yaml-include": "./src/install.js"
-  },
-  "license": "MIT",
-  "author": "yuu1111",
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/yuu1111/dsh-yaml-include.git"
-  },
-  "homepage": "https://github.com/yuu1111/dsh-yaml-include#readme",
-  "bugs": {
-    "url": "https://github.com/yuu1111/dsh-yaml-include/issues"
-  }
+	"name": "dsh-yaml-include",
+	"version": "0.1.0",
+	"private": true,
+	"type": "module",
+	"description": "Native !include bootstrap adapter for DeepSeek Harness YAML configuration",
+	"main": "dist/src/native.js",
+	"exports": {
+		".": {
+			"types": "./dist/src/native.d.ts",
+			"import": "./dist/src/native.js",
+			"default": "./dist/src/native.js"
+		},
+		"./reader": {
+			"types": "./dist/src/reader.d.ts",
+			"import": "./dist/src/reader.js",
+			"default": "./dist/src/reader.js"
+		},
+		"./install": {
+			"types": "./dist/src/install.d.ts",
+			"import": "./dist/src/install.js",
+			"default": "./dist/src/install.js"
+		},
+		"./cordis.patch.yml": "./cordis.patch.yml"
+	},
+	"files": [
+		"dist/src",
+		"cordis.patch.yml",
+		"README.md",
+		"README.ja.md"
+	],
+	"engines": {
+		"node": ">=22.19"
+	},
+	"scripts": {
+		"test": "npm run build && node --test dist/tests/*.test.js",
+		"check:quality": "quality-check",
+		"format": "biome format --write .",
+		"check": "npm run typecheck && npm test",
+		"install:native": "npm run build && node dist/src/install.js",
+		"smoke": "npm run build && node dist/scripts/smoke.js",
+		"build": "tsc -p tsconfig.build.json",
+		"typecheck": "tsc --noEmit",
+		"prepack": "npm run build"
+	},
+	"dsh": {
+		"bundle": {
+			"patch": "./cordis.patch.yml"
+		}
+	},
+	"dependencies": {
+		"@types/js-yaml": "^4.0.9",
+		"js-yaml": "^4.3.2"
+	},
+	"devDependencies": {
+		"@biomejs/biome": "^2.5.15",
+		"@types/node": "^26.6.5",
+		"@yuu1111/biome-config": "^2.2.2",
+		"@yuu1111/knip-config": "^2.1.0",
+		"@yuu1111/quality-check": "^5.3.1",
+		"@yuu1111/tsconfig": "^1.0.8",
+		"knip": "^6.41.0",
+		"typescript": "^7.0.2",
+		"yaml": "^2.9.1"
+	},
+	"bin": {
+		"dsh-yaml-include": "./dist/src/install.js"
+	},
+	"license": "MIT",
+	"author": "yuu1111",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/yuu1111/dsh-yaml-include.git"
+	},
+	"homepage": "https://github.com/yuu1111/dsh-yaml-include#readme",
+	"bugs": {
+		"url": "https://github.com/yuu1111/dsh-yaml-include/issues"
+	},
+	"types": "dist/src/native.d.ts"
 }

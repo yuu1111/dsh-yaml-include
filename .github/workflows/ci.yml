@@ -22,4 +22,5 @@ jobs:
           node-version: 26.8.2
       - run: npm ci --ignore-scripts
       - run: npm run check
+      - run: npm run check:quality
       - run: npm run smoke

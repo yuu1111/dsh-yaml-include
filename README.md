@@ -1,3 +1,5 @@
+[日本語](README.ja.md)
+
 # dsh-yaml-include
 
 Native local-file `!include` support for DeepSeek Harness YAML configuration, without JavaScript configuration expressions or generated combined files.
@@ -19,13 +21,13 @@ Select the exact DSH installation to modify. For a global installation:
 
 ```powershell
 $dshDir = Join-Path (npm root -g) '@deepseek-ai/dsh'
-node src/install.js --dsh-dir $dshDir --dry-run
-node src/install.js --dsh-dir $dshDir
+node dist/src/install.js --dsh-dir $dshDir --dry-run
+node dist/src/install.js --dsh-dir $dshDir
 ```
 
 ```sh
-node src/install.js --dsh-dir "$(npm root -g)/@deepseek-ai/dsh" --dry-run
-node src/install.js --dsh-dir "$(npm root -g)/@deepseek-ai/dsh"
+node dist/src/install.js --dsh-dir "$(npm root -g)/@deepseek-ai/dsh" --dry-run
+node dist/src/install.js --dsh-dir "$(npm root -g)/@deepseek-ai/dsh"
 ```
 
 The same CLI is packaged as `dsh-yaml-include`. Explicit `--dsh-dir` avoids patching a different DSH installation. Node module resolution supports nested npm/pnpm dependencies and hoisted local dependencies.
@@ -49,10 +51,9 @@ Write tags directly in an ordinary bundle patch:
 Provider index:
 
 ```yaml
-opencode-go: !include opencode-go.yml
-command-code: !include command-code.yml
-llama-t4: !include llama-t4.yml
-llama-local: !include llama-local.yml
+primary: !include primary.yml
+secondary: !include secondary.yml
+local: !include local.yml
 ```
 
 Each reference is relative to its containing file. Includes replace a scalar with one parsed YAML value; lists are not spliced or deep-merged. Anchors work inside their document, not across files. Relative plugin module names in included entries retain DSH's original root-patch anchoring rules.
@@ -83,7 +84,7 @@ A trusted local filesystem is required. This is not an OS sandbox against anothe
 Original backups are stored outside the npm package under `~/.dsh-yaml-include/native-backups`; `--backup-dir` can relocate them. SHA-256 validation checks installed targets and original backups. The installer plans all targets first, prevents concurrent operations and rolls back completed writes on a handled failure. Re-running is idempotent and can update helpers while retaining original backups. Unexpected local changes are refused rather than overwritten.
 
 ```sh
-node src/install.js --dsh-dir /exact/dsh/package --uninstall
+node dist/src/install.js --dsh-dir /exact/dsh/package --uninstall
 ```
 
 Remove native tags before uninstalling or updating DSH. A DSH update may replace the adapter; do not activate include-dependent configuration until a supported adapter is reapplied. A changed DSH version needs a compatible adapter release, not a forced installation. Keep backups until restoration is no longer needed.
@@ -93,8 +94,13 @@ Remove native tags before uninstalling or updating DSH. A DSH update may replace
 ```sh
 npm ci --ignore-scripts
 npm run check
+npm run check:quality
 npm pack --dry-run
 ```
+
+Source, tests and scripts are written in TypeScript. `npm run build` compiles them into `dist`; the package exports and CLI use the generated JavaScript in `dist/src` and include type declarations. Run the build before using the CLI; the TypeScript source is not executed directly.
+
+`npm run check` runs strict type checking, builds and tests the compiled code. `check:quality` runs Biome, TypeScript, Knip and the built-in style checks using the shared `@yuu1111` configurations. Findings are reported without a baseline; `npm run format` applies formatting.
 
 The default suite checks confinement, graph limits, source preservation, relocation, planning, idempotence and restoration. Set `DSH_TEST_HOST_ENTRY` to a native-patched DSH package.json to run real ConfigEditor integration tests; these use temporary profiles and never start a server or access the real user profile.
 
