@@ -1,6 +1,6 @@
 # Publishing dsh-yaml-include
 
-The supported host remains `@deepseek-ai/dsh@0.2.0-rc.2` only. Official versions are published through GitHub Actions with provenance.
+The supported host remains `@deepseek-ai/dsh@0.2.1-rc.2` only. Official versions are published through GitHub Actions with provenance.
 
 ## Publisher configuration
 

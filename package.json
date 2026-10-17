@@ -1,6 +1,6 @@
 {
 	"name": "dsh-yaml-include",
-	"version": "0.1.0",
+	"version": "0.1.1",
 	"type": "module",
 	"description": "Native !include bootstrap adapter for DeepSeek Harness YAML configuration",
 	"main": "dist/src/native.js",

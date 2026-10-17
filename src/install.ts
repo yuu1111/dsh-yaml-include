@@ -19,7 +19,7 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 /**
  * The sole supported DSH version; other versions are refused rather than patched speculatively.
  */
-export const VERSION = "0.2.0-rc.2";
+export const VERSION = "0.2.1-rc.2";
 
 /**
  * Identifies adapter-owned bundles; a marker alone is not proof of a managed installation.

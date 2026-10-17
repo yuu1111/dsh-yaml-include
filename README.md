@@ -4,7 +4,7 @@
 
 Native local-file `!include` support for DeepSeek Harness YAML configuration, without JavaScript configuration expressions or generated combined files.
 
-**Compatibility: @deepseek-ai/dsh 0.2.0-rc.2 only.** This adapter patches boot-time configuration loading before profiles are read; it does not need to be enabled as an ordinary bundle plugin. It explicitly extends the installed boot parser, Cordis Include and ConfigEditor. No global YAML schema is modified. Other DSH versions and unexpected parser shapes are refused before any target is written.
+**Compatibility: @deepseek-ai/dsh 0.2.1-rc.2 only.** This adapter patches boot-time configuration loading before profiles are read; it does not need to be enabled as an ordinary bundle plugin. It explicitly extends the installed boot parser, Cordis Include and ConfigEditor. No global YAML schema is modified. Other DSH versions and unexpected parser shapes are refused before any target is written.
 
 ## Install
 

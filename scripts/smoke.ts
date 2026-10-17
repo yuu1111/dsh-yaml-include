@@ -13,6 +13,7 @@ import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { VERSION } from "../src/install.js";
 
 /**
  * Anchors packing to the repository rather than the disposable consumer project.
@@ -110,7 +111,7 @@ try {
 			"--ignore-workspace",
 			"--store-dir",
 			join(temp, "store"),
-			"@deepseek-ai/dsh@0.2.0-rc.2",
+			`@deepseek-ai/dsh@${VERSION}`,
 			join(temp, `dsh-yaml-include-${version}.tgz`),
 		],
 		temp,
